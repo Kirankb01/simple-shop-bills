@@ -99,22 +99,27 @@ export default function Billing() {
     return subtotal - discount;
   };
 
-  const getItemGst = (item: CartItem) => {
-    return (getItemTotal(item) * item.product.gstPercent) / 100;
+  const updateDiscount = (index: number, discount: number) => {
+    const newCart = [...cart];
+    newCart[index].discount = Math.max(0, Math.min(100, discount));
+    setCart(newCart);
   };
 
   const totals = useMemo(() => {
-    const subtotal = cart.reduce((sum, item) => sum + getItemTotal(item), 0);
-    const totalGst = cart.reduce((sum, item) => sum + getItemGst(item), 0);
+    const totalBeforeDiscount = cart.reduce((sum, item) => {
+      const price = getItemPrice(item);
+      return sum + (price * item.quantity);
+    }, 0);
     const totalDiscount = cart.reduce((sum, item) => {
       const price = getItemPrice(item);
       return sum + (price * item.quantity * item.discount) / 100;
     }, 0);
+    const grandTotal = totalBeforeDiscount - totalDiscount;
     return {
-      subtotal,
-      totalGst,
+      subtotal: totalBeforeDiscount,
+      totalGst: 0,
       totalDiscount,
-      grandTotal: subtotal + totalGst,
+      grandTotal,
     };
   }, [cart, billType]);
 
@@ -311,7 +316,7 @@ export default function Billing() {
                           {formatCurrency(getItemTotal(item))}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                         <Button
                           variant="outline"
                           size="icon"
@@ -324,7 +329,7 @@ export default function Billing() {
                           type="number"
                           value={item.quantity}
                           onChange={(e) => setQuantity(index, parseInt(e.target.value) || 1)}
-                          className="h-8 w-16 text-center"
+                          className="h-8 w-14 text-center"
                         />
                         <Button
                           variant="outline"
@@ -334,6 +339,16 @@ export default function Billing() {
                         >
                           <Plus className="h-4 w-4" />
                         </Button>
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            value={item.discount}
+                            onChange={(e) => updateDiscount(index, parseFloat(e.target.value) || 0)}
+                            className="h-8 w-14 text-center"
+                            placeholder="0"
+                          />
+                          <span className="text-xs text-muted-foreground">%</span>
+                        </div>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -357,12 +372,8 @@ export default function Billing() {
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="price-display">{formatCurrency(totals.subtotal)}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">GST</span>
-                <span className="price-display">{formatCurrency(totals.totalGst)}</span>
-              </div>
               {totals.totalDiscount > 0 && (
-                <div className="flex justify-between text-sm text-success">
+                <div className="flex justify-between text-sm text-green-600">
                   <span>Discount</span>
                   <span>-{formatCurrency(totals.totalDiscount)}</span>
                 </div>
@@ -420,10 +431,12 @@ export default function Billing() {
                   <span>Subtotal</span>
                   <span>{formatCurrency(lastInvoice.subtotal)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>GST</span>
-                  <span>{formatCurrency(lastInvoice.totalGst)}</span>
-                </div>
+                {lastInvoice.totalDiscount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Discount</span>
+                    <span>-{formatCurrency(lastInvoice.totalDiscount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-bold text-lg pt-2">
                   <span>Total</span>
                   <span>{formatCurrency(lastInvoice.grandTotal)}</span>
