@@ -29,18 +29,18 @@ export default function LowStock() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <AlertTriangle className="h-6 w-6 text-warning" />
-            Low Stock Items
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-warning" />
+            Low Stock
           </h1>
-          <p className="text-muted-foreground">Products that need restocking</p>
+          <p className="text-sm text-muted-foreground">Products that need restocking</p>
         </div>
-        <Link to="/purchase">
-          <Button>
+        <Link to="/purchase" className="w-full sm:w-auto">
+          <Button className="w-full sm:w-auto">
             Add Purchase
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
@@ -76,7 +76,7 @@ export default function LowStock() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {lowStockProducts.map(product => (
             <Card key={product.id} className="border-warning/30">
               <CardHeader className="pb-2">
