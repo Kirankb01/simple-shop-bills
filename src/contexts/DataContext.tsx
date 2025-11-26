@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { Product, Invoice, PurchaseEntry, CartItem } from '@/types';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { Product, Invoice, PurchaseEntry } from '@/types';
 
 interface DataContextType {
   products: Product[];
@@ -15,9 +15,17 @@ interface DataContextType {
   getTopSellingProducts: (limit?: number) => { product: Product; soldCount: number }[];
   getTodaySales: () => number;
   getMonthSales: () => number;
+  refreshData: () => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
+
+// Storage keys
+const STORAGE_KEYS = {
+  products: 'smartbill_products',
+  invoices: 'smartbill_invoices',
+  purchases: 'smartbill_purchases',
+};
 
 // Initial mock products
 const INITIAL_PRODUCTS: Product[] = [
@@ -98,52 +106,106 @@ const INITIAL_PRODUCTS: Product[] = [
   },
 ];
 
-const INITIAL_INVOICES: Invoice[] = [
-  {
-    id: '1',
-    invoiceNumber: 'INV-001',
-    items: [],
-    subtotal: 520,
-    totalGst: 62.4,
-    totalDiscount: 0,
-    grandTotal: 582.4,
-    customerName: 'Walk-in Customer',
-    type: 'retail',
-    createdAt: new Date(),
-    createdBy: 'admin',
-  },
-];
+const INITIAL_INVOICES: Invoice[] = [];
+
+// Helper to load from localStorage with proper date parsing
+const loadFromStorage = <T,>(key: string, fallback: T): T => {
+  try {
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      return JSON.parse(saved, (k, v) => {
+        if (k === 'createdAt' || k === 'updatedAt') {
+          return new Date(v);
+        }
+        return v;
+      });
+    }
+  } catch (e) {
+    console.error(`Error loading ${key} from storage:`, e);
+  }
+  return fallback;
+};
+
+// Helper to save to localStorage
+const saveToStorage = <T,>(key: string, data: T): void => {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+    // Dispatch custom event for cross-tab sync
+    window.dispatchEvent(new CustomEvent('smartbill-storage-update', { detail: { key } }));
+  } catch (e) {
+    console.error(`Error saving ${key} to storage:`, e);
+  }
+};
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
-  const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('smartbill_products');
-    return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
-  });
+  const [products, setProducts] = useState<Product[]>(() => 
+    loadFromStorage(STORAGE_KEYS.products, INITIAL_PRODUCTS)
+  );
 
-  const [invoices, setInvoices] = useState<Invoice[]>(() => {
-    const saved = localStorage.getItem('smartbill_invoices');
-    return saved ? JSON.parse(saved) : INITIAL_INVOICES;
-  });
+  const [invoices, setInvoices] = useState<Invoice[]>(() => 
+    loadFromStorage(STORAGE_KEYS.invoices, INITIAL_INVOICES)
+  );
 
-  const [purchases, setPurchases] = useState<PurchaseEntry[]>(() => {
-    const saved = localStorage.getItem('smartbill_purchases');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [purchases, setPurchases] = useState<PurchaseEntry[]>(() => 
+    loadFromStorage(STORAGE_KEYS.purchases, [])
+  );
 
-  const saveProducts = (newProducts: Product[]) => {
+  // Refresh data from localStorage (useful for cross-tab sync)
+  const refreshData = useCallback(() => {
+    setProducts(loadFromStorage(STORAGE_KEYS.products, INITIAL_PRODUCTS));
+    setInvoices(loadFromStorage(STORAGE_KEYS.invoices, INITIAL_INVOICES));
+    setPurchases(loadFromStorage(STORAGE_KEYS.purchases, []));
+  }, []);
+
+  // Listen for storage changes from other tabs
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEYS.products) {
+        setProducts(loadFromStorage(STORAGE_KEYS.products, INITIAL_PRODUCTS));
+      } else if (e.key === STORAGE_KEYS.invoices) {
+        setInvoices(loadFromStorage(STORAGE_KEYS.invoices, INITIAL_INVOICES));
+      } else if (e.key === STORAGE_KEYS.purchases) {
+        setPurchases(loadFromStorage(STORAGE_KEYS.purchases, []));
+      }
+    };
+
+    // Listen for custom events (same tab updates from other components)
+    const handleCustomUpdate = (e: CustomEvent<{ key: string }>) => {
+      if (e.detail.key === STORAGE_KEYS.products) {
+        setProducts(loadFromStorage(STORAGE_KEYS.products, INITIAL_PRODUCTS));
+      } else if (e.detail.key === STORAGE_KEYS.invoices) {
+        setInvoices(loadFromStorage(STORAGE_KEYS.invoices, INITIAL_INVOICES));
+      } else if (e.detail.key === STORAGE_KEYS.purchases) {
+        setPurchases(loadFromStorage(STORAGE_KEYS.purchases, []));
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('smartbill-storage-update', handleCustomUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('smartbill-storage-update', handleCustomUpdate as EventListener);
+    };
+  }, []);
+
+  // Save products and update state atomically
+  const saveProducts = useCallback((newProducts: Product[]) => {
     setProducts(newProducts);
-    localStorage.setItem('smartbill_products', JSON.stringify(newProducts));
-  };
+    saveToStorage(STORAGE_KEYS.products, newProducts);
+  }, []);
 
-  const saveInvoices = (newInvoices: Invoice[]) => {
+  // Save invoices and update state atomically
+  const saveInvoices = useCallback((newInvoices: Invoice[]) => {
     setInvoices(newInvoices);
-    localStorage.setItem('smartbill_invoices', JSON.stringify(newInvoices));
-  };
+    saveToStorage(STORAGE_KEYS.invoices, newInvoices);
+  }, []);
 
-  const savePurchases = (newPurchases: PurchaseEntry[]) => {
+  // Save purchases and update state atomically
+  const savePurchases = useCallback((newPurchases: PurchaseEntry[]) => {
     setPurchases(newPurchases);
-    localStorage.setItem('smartbill_purchases', JSON.stringify(newPurchases));
-  };
+    saveToStorage(STORAGE_KEYS.purchases, newPurchases);
+  }, []);
 
   const addProduct = useCallback((product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
     const newProduct: Product = {
@@ -152,44 +214,65 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    saveProducts([...products, newProduct]);
-  }, [products]);
+    // Use functional update to ensure we have latest state
+    setProducts(prev => {
+      const updated = [...prev, newProduct];
+      saveToStorage(STORAGE_KEYS.products, updated);
+      return updated;
+    });
+  }, []);
 
   const updateProduct = useCallback((id: string, updates: Partial<Product>) => {
-    const updated = products.map(p =>
-      p.id === id ? { ...p, ...updates, updatedAt: new Date() } : p
-    );
-    saveProducts(updated);
-  }, [products]);
+    setProducts(prev => {
+      const updated = prev.map(p =>
+        p.id === id ? { ...p, ...updates, updatedAt: new Date() } : p
+      );
+      saveToStorage(STORAGE_KEYS.products, updated);
+      return updated;
+    });
+  }, []);
 
   const deleteProduct = useCallback((id: string) => {
-    saveProducts(products.filter(p => p.id !== id));
-  }, [products]);
+    setProducts(prev => {
+      const updated = prev.filter(p => p.id !== id);
+      saveToStorage(STORAGE_KEYS.products, updated);
+      return updated;
+    });
+  }, []);
 
   const updateStock = useCallback((productId: string, quantity: number) => {
-    const updated = products.map(p =>
-      p.id === productId ? { ...p, stock: p.stock + quantity, updatedAt: new Date() } : p
-    );
-    saveProducts(updated);
-  }, [products]);
+    setProducts(prev => {
+      const updated = prev.map(p =>
+        p.id === productId ? { ...p, stock: p.stock + quantity, updatedAt: new Date() } : p
+      );
+      saveToStorage(STORAGE_KEYS.products, updated);
+      return updated;
+    });
+  }, []);
 
   const addInvoice = useCallback((invoice: Omit<Invoice, 'id' | 'invoiceNumber' | 'createdAt'>) => {
-    const invoiceNumber = `INV-${String(invoices.length + 1).padStart(4, '0')}`;
-    const newInvoice: Invoice = {
-      ...invoice,
-      id: Date.now().toString(),
-      invoiceNumber,
-      createdAt: new Date(),
-    };
+    let newInvoice: Invoice;
+    
+    setInvoices(prev => {
+      const invoiceNumber = `INV-${String(prev.length + 1).padStart(4, '0')}`;
+      newInvoice = {
+        ...invoice,
+        id: Date.now().toString(),
+        invoiceNumber,
+        createdAt: new Date(),
+      };
+      const updated = [...prev, newInvoice];
+      saveToStorage(STORAGE_KEYS.invoices, updated);
+      return updated;
+    });
     
     // Update stock for each item
     invoice.items.forEach(item => {
       updateStock(item.product.id, -item.quantity);
     });
     
-    saveInvoices([...invoices, newInvoice]);
-    return newInvoice;
-  }, [invoices, updateStock]);
+    return newInvoice!;
+  }, [updateStock]);
 
   const addPurchase = useCallback((purchase: Omit<PurchaseEntry, 'id' | 'createdAt'>) => {
     const newPurchase: PurchaseEntry = {
@@ -197,9 +280,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       id: Date.now().toString(),
       createdAt: new Date(),
     };
-    savePurchases([...purchases, newPurchase]);
+    
+    setPurchases(prev => {
+      const updated = [...prev, newPurchase];
+      saveToStorage(STORAGE_KEYS.purchases, updated);
+      return updated;
+    });
+    
     updateStock(purchase.productId, purchase.quantity);
-  }, [purchases, updateStock]);
+  }, [updateStock]);
 
   const getLowStockProducts = useCallback(() => {
     return products.filter(p => p.stock <= p.lowStockThreshold);
@@ -253,6 +342,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       getTopSellingProducts,
       getTodaySales,
       getMonthSales,
+      refreshData,
     }}>
       {children}
     </DataContext.Provider>
