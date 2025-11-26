@@ -17,7 +17,6 @@ import {
   Printer,
   Receipt,
   User,
-  Phone,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -172,30 +171,28 @@ export default function Billing() {
   return (
     <div className="space-y-4 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <ShoppingCart className="h-6 w-6" />
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
+            <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6" />
             Billing
           </h1>
-          <p className="text-muted-foreground">Create invoices for retail and wholesale customers</p>
+          <p className="text-sm text-muted-foreground">Create invoices for customers</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Select value={billType} onValueChange={(v: 'retail' | 'wholesale') => setBillType(v)}>
-            <SelectTrigger className="w-36">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="retail">Retail</SelectItem>
-              <SelectItem value="wholesale">Wholesale</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select value={billType} onValueChange={(v: 'retail' | 'wholesale') => setBillType(v)}>
+          <SelectTrigger className="w-full sm:w-36">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="retail">Retail</SelectItem>
+            <SelectItem value="wholesale">Wholesale</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Product Search & Selection */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="lg:col-span-2 space-y-4 order-2 lg:order-1">
           {/* Search */}
           <Card>
             <CardContent className="pt-4">
@@ -203,11 +200,10 @@ export default function Billing() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   ref={searchInputRef}
-                  placeholder="Search products by name, SKU, or category..."
+                  placeholder="Search products..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-12 text-lg search-input"
-                  autoFocus
+                  className="pl-10 h-12 text-base sm:text-lg search-input"
                 />
               </div>
             </CardContent>
@@ -216,135 +212,130 @@ export default function Billing() {
           {/* Product Grid */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">
-                {searchQuery ? `Search results for "${searchQuery}"` : 'Quick Add Products'}
+              <CardTitle className="text-sm sm:text-base">
+                {searchQuery ? `Results for "${searchQuery}"` : 'Quick Add'}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2">
                 {filteredProducts.map((product) => (
                   <button
                     key={product.id}
                     onClick={() => addToCart(product)}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:bg-accent/50 hover:border-primary/50 transition-all text-left group"
+                    className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg border border-border bg-card hover:bg-accent/50 hover:border-primary/50 transition-all text-left group"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate group-hover:text-primary transition-colors">
+                      <p className="font-medium text-sm sm:text-base truncate group-hover:text-primary transition-colors">
                         {product.name}
                       </p>
-                      <p className="text-sm text-muted-foreground">{product.sku}</p>
+                      <p className="text-xs text-muted-foreground">{product.sku}</p>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold price-display">
+                    <div className="text-right shrink-0">
+                      <p className="font-semibold price-display text-sm sm:text-base">
                         {formatCurrency(billType === 'wholesale' ? product.wholesalePrice : product.sellingPrice)}
                       </p>
-                      <Badge variant={product.stock <= product.lowStockThreshold ? 'destructive' : 'secondary'} className="text-xs">
-                        {product.stock} in stock
+                      <Badge 
+                        variant={product.stock <= product.lowStockThreshold ? 'destructive' : 'secondary'} 
+                        className="text-xs"
+                      >
+                        {product.stock}
                       </Badge>
                     </div>
-                    <Plus className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    <Plus className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
                   </button>
                 ))}
               </div>
               {filteredProducts.length === 0 && (
-                <p className="text-center py-8 text-muted-foreground">No products found</p>
+                <p className="text-center py-6 text-muted-foreground text-sm">No products found</p>
               )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Cart */}
-        <div className="space-y-4">
+        {/* Cart Section */}
+        <div className="space-y-4 order-1 lg:order-2">
           {/* Customer Details */}
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
+            <CardHeader className="pb-2 sm:pb-3">
+              <CardTitle className="text-sm sm:text-base flex items-center gap-2">
                 <User className="h-4 w-4" />
-                Customer Details
+                Customer
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <Label htmlFor="customerName" className="text-xs">Name (Optional)</Label>
-                <Input
-                  id="customerName"
-                  placeholder="Walk-in Customer"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="customerPhone" className="text-xs">Phone (Optional)</Label>
-                <Input
-                  id="customerPhone"
-                  placeholder="Phone number"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                />
-              </div>
+            <CardContent className="space-y-2 sm:space-y-3">
+              <Input
+                placeholder="Name (Optional)"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+              />
+              <Input
+                placeholder="Phone (Optional)"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+              />
             </CardContent>
           </Card>
 
           {/* Cart Items */}
-          <Card className="flex flex-col max-h-[500px]">
-            <CardHeader className="pb-3 flex-shrink-0">
-              <CardTitle className="text-base flex items-center justify-between">
+          <Card className="flex flex-col">
+            <CardHeader className="pb-2 sm:pb-3 flex-shrink-0">
+              <CardTitle className="text-sm sm:text-base flex items-center justify-between">
                 <span className="flex items-center gap-2">
                   <ShoppingCart className="h-4 w-4" />
-                  Cart ({cart.length} items)
+                  Cart ({cart.length})
                 </span>
-                <Badge variant={billType === 'wholesale' ? 'default' : 'secondary'}>
+                <Badge variant={billType === 'wholesale' ? 'default' : 'secondary'} className="text-xs">
                   {billType}
                 </Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex-1 overflow-auto">
+            <CardContent className="flex-1 overflow-auto max-h-[300px] lg:max-h-[400px]">
               {cart.length === 0 ? (
-                <p className="text-center py-8 text-muted-foreground">Cart is empty</p>
+                <p className="text-center py-6 text-muted-foreground text-sm">Cart is empty</p>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {cart.map((item, index) => (
-                    <div key={item.product.id} className="p-3 rounded-lg bg-muted/50 animate-slide-in">
+                    <div key={item.product.id} className="p-2 sm:p-3 rounded-lg bg-muted/50 animate-scale-in">
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{item.product.name}</p>
+                          <p className="font-medium text-xs sm:text-sm truncate">{item.product.name}</p>
                           <p className="text-xs text-muted-foreground">
                             {formatCurrency(getItemPrice(item))} × {item.quantity}
                           </p>
                         </div>
-                        <p className="font-semibold price-display text-sm">
+                        <p className="font-semibold price-display text-xs sm:text-sm shrink-0">
                           {formatCurrency(getItemTotal(item))}
                         </p>
                       </div>
-                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
                         <Button
                           variant="outline"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-7 w-7 sm:h-8 sm:w-8"
                           onClick={() => updateQuantity(index, -1)}
                         >
-                          <Minus className="h-4 w-4" />
+                          <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
                         <Input
                           type="number"
                           value={item.quantity}
                           onChange={(e) => setQuantity(index, parseInt(e.target.value) || 1)}
-                          className="h-8 w-14 text-center"
+                          className="h-7 sm:h-8 w-12 sm:w-14 text-center text-sm"
                         />
                         <Button
                           variant="outline"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-7 w-7 sm:h-8 sm:w-8"
                           onClick={() => updateQuantity(index, 1)}
                         >
-                          <Plus className="h-4 w-4" />
+                          <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
                         <div className="flex items-center gap-1">
                           <Input
                             type="number"
                             value={item.discount}
                             onChange={(e) => updateDiscount(index, parseFloat(e.target.value) || 0)}
-                            className="h-8 w-14 text-center"
+                            className="h-7 sm:h-8 w-12 sm:w-14 text-center text-sm"
                             placeholder="0"
                           />
                           <span className="text-xs text-muted-foreground">%</span>
@@ -352,10 +343,10 @@ export default function Billing() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          className="h-7 w-7 sm:h-8 sm:w-8 text-destructive hover:text-destructive ml-auto"
                           onClick={() => removeFromCart(index)}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
                       </div>
                     </div>
@@ -367,7 +358,7 @@ export default function Billing() {
 
           {/* Totals */}
           <Card>
-            <CardContent className="pt-4 space-y-3">
+            <CardContent className="pt-4 space-y-2 sm:space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="price-display">{formatCurrency(totals.subtotal)}</span>
@@ -380,15 +371,15 @@ export default function Billing() {
               )}
               <Separator />
               <div className="flex justify-between">
-                <span className="font-semibold">Grand Total</span>
-                <span className="price-large">{formatCurrency(totals.grandTotal)}</span>
+                <span className="font-semibold text-sm sm:text-base">Grand Total</span>
+                <span className="price-large text-lg sm:text-xl">{formatCurrency(totals.grandTotal)}</span>
               </div>
               <Button 
-                className="w-full h-12 text-lg btn-billing"
+                className="w-full h-10 sm:h-12 text-sm sm:text-lg btn-billing"
                 onClick={handleSaveBill}
                 disabled={cart.length === 0}
               >
-                <Receipt className="mr-2 h-5 w-5" />
+                <Receipt className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
                 Save & Print Bill
               </Button>
             </CardContent>
@@ -398,20 +389,20 @@ export default function Billing() {
 
       {/* Invoice Preview Dialog */}
       <Dialog open={showInvoice} onOpenChange={setShowInvoice}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Receipt className="h-5 w-5" />
+            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Receipt className="h-4 w-4 sm:h-5 sm:w-5" />
               Invoice {lastInvoice?.invoiceNumber}
             </DialogTitle>
           </DialogHeader>
           {lastInvoice && (
-            <div className="space-y-4">
-              <div className="text-center border-b pb-4">
-                <h2 className="text-xl font-bold">SmartBill Store</h2>
-                <p className="text-sm text-muted-foreground">Your Stationery Partner</p>
+            <div className="space-y-3 sm:space-y-4">
+              <div className="text-center border-b pb-3 sm:pb-4">
+                <h2 className="text-lg sm:text-xl font-bold">SmartBill Store</h2>
+                <p className="text-xs sm:text-sm text-muted-foreground">Your Stationery Partner</p>
               </div>
-              <div className="text-sm space-y-1">
+              <div className="text-xs sm:text-sm space-y-1">
                 <p><span className="text-muted-foreground">Customer:</span> {lastInvoice.customerName}</p>
                 <p><span className="text-muted-foreground">Date:</span> {new Date(lastInvoice.createdAt).toLocaleString()}</p>
                 <p><span className="text-muted-foreground">Type:</span> {lastInvoice.type}</p>
@@ -419,14 +410,14 @@ export default function Billing() {
               <Separator />
               <div className="space-y-2">
                 {lastInvoice.items.map((item: CartItem, i: number) => (
-                  <div key={i} className="flex justify-between text-sm">
-                    <span>{item.product.name} × {item.quantity}</span>
-                    <span>{formatCurrency(getItemTotal(item))}</span>
+                  <div key={i} className="flex justify-between text-xs sm:text-sm gap-2">
+                    <span className="truncate flex-1">{item.product.name} × {item.quantity}</span>
+                    <span className="shrink-0">{formatCurrency(getItemTotal(item))}</span>
                   </div>
                 ))}
               </div>
               <Separator />
-              <div className="space-y-1 text-sm">
+              <div className="space-y-1 text-xs sm:text-sm">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
                   <span>{formatCurrency(lastInvoice.subtotal)}</span>
@@ -437,16 +428,18 @@ export default function Billing() {
                     <span>-{formatCurrency(lastInvoice.totalDiscount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between font-bold text-lg pt-2">
+                <div className="flex justify-between font-bold text-base sm:text-lg pt-2">
                   <span>Total</span>
                   <span>{formatCurrency(lastInvoice.grandTotal)}</span>
                 </div>
               </div>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowInvoice(false)}>Close</Button>
-            <Button onClick={handlePrint}>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setShowInvoice(false)} className="w-full sm:w-auto">
+              Close
+            </Button>
+            <Button onClick={handlePrint} className="w-full sm:w-auto">
               <Printer className="mr-2 h-4 w-4" />
               Print
             </Button>

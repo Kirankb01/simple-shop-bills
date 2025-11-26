@@ -90,26 +90,26 @@ export default function PurchaseEntry() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <PackagePlus className="h-6 w-6" />
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
+          <PackagePlus className="h-5 w-5 sm:h-6 sm:w-6" />
           Purchase Entry
         </h1>
-        <p className="text-muted-foreground">Record new stock purchases from suppliers</p>
+        <p className="text-sm text-muted-foreground">Record stock purchases</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
         {/* Form */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">New Purchase</CardTitle>
+          <CardHeader className="py-3 sm:py-4">
+            <CardTitle className="text-base sm:text-lg">New Purchase</CardTitle>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <CardContent className="pt-0">
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
               <div>
-                <Label>Product *</Label>
+                <Label className="text-sm">Product *</Label>
                 <Select 
                   value={formData.productId} 
                   onValueChange={(v) => {
@@ -127,9 +127,9 @@ export default function PurchaseEntry() {
                   <SelectContent>
                     {products.map(product => (
                       <SelectItem key={product.id} value={product.id}>
-                        <div className="flex items-center justify-between gap-4">
-                          <span>{product.name}</span>
-                          <Badge variant="secondary" className="ml-2">{product.stock} in stock</Badge>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate">{product.name}</span>
+                          <Badge variant="secondary" className="ml-2 text-xs">{product.stock}</Badge>
                         </div>
                       </SelectItem>
                     ))}
@@ -138,7 +138,7 @@ export default function PurchaseEntry() {
               </div>
 
               <div>
-                <Label>Supplier Name *</Label>
+                <Label className="text-sm">Supplier Name *</Label>
                 <Input
                   value={formData.supplierName}
                   onChange={(e) => setFormData({ ...formData, supplierName: e.target.value })}
@@ -146,9 +146,9 @@ export default function PurchaseEntry() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <Label>Quantity *</Label>
+                  <Label className="text-sm">Quantity *</Label>
                   <Input
                     type="number"
                     value={formData.quantity || ''}
@@ -157,7 +157,7 @@ export default function PurchaseEntry() {
                   />
                 </div>
                 <div>
-                  <Label>Cost Price (₹)</Label>
+                  <Label className="text-sm">Cost Price (₹)</Label>
                   <Input
                     type="number"
                     value={formData.costPrice || ''}
@@ -168,7 +168,7 @@ export default function PurchaseEntry() {
               </div>
 
               <div>
-                <Label>Supplier Invoice No.</Label>
+                <Label className="text-sm">Supplier Invoice No.</Label>
                 <Input
                   value={formData.invoiceNo}
                   onChange={(e) => setFormData({ ...formData, invoiceNo: e.target.value })}
@@ -177,7 +177,7 @@ export default function PurchaseEntry() {
               </div>
 
               <div>
-                <Label>Notes (Optional)</Label>
+                <Label className="text-sm">Notes (Optional)</Label>
                 <Textarea
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
@@ -188,10 +188,10 @@ export default function PurchaseEntry() {
 
               {formData.productId && formData.quantity > 0 && (
                 <Card className="bg-muted/50">
-                  <CardContent className="pt-4">
+                  <CardContent className="pt-3 sm:pt-4">
                     <div className="flex justify-between text-sm mb-2">
                       <span className="text-muted-foreground">Total Cost</span>
-                      <span className="font-semibold price-display">
+                      <span className="font-semibold">
                         {formatCurrency(formData.costPrice * formData.quantity)}
                       </span>
                     </div>
@@ -212,26 +212,26 @@ export default function PurchaseEntry() {
 
         {/* Recent Purchases */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Recent Purchases</CardTitle>
+          <CardHeader className="py-3 sm:py-4">
+            <CardTitle className="text-base sm:text-lg">Recent Purchases</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             {purchases.length === 0 ? (
-              <p className="text-center py-8 text-muted-foreground">No purchases recorded yet</p>
+              <p className="text-center py-6 text-muted-foreground text-sm">No purchases recorded yet</p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4 max-h-[500px] overflow-y-auto">
                 {purchases.slice(-10).reverse().map(purchase => (
-                  <div key={purchase.id} className="p-3 rounded-lg border border-border">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-medium">{purchase.productName}</p>
-                        <p className="text-sm text-muted-foreground">
+                  <div key={purchase.id} className="p-2 sm:p-3 rounded-lg border border-border">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-sm truncate">{purchase.productName}</p>
+                        <p className="text-xs text-muted-foreground truncate">
                           From: {purchase.supplierName}
                         </p>
                       </div>
-                      <Badge variant="secondary">+{purchase.quantity}</Badge>
+                      <Badge variant="secondary" className="text-xs shrink-0">+{purchase.quantity}</Badge>
                     </div>
-                    <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
                         {new Date(purchase.date).toLocaleDateString()}

@@ -144,17 +144,17 @@ export default function Products() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Package className="h-6 w-6" />
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
+            <Package className="h-5 w-5 sm:h-6 sm:w-6" />
             Products
           </h1>
-          <p className="text-muted-foreground">Manage your inventory items</p>
+          <p className="text-sm text-muted-foreground">Manage your inventory</p>
         </div>
-        <Button onClick={handleAdd}>
+        <Button onClick={handleAdd} className="w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           Add Product
         </Button>
@@ -163,12 +163,12 @@ export default function Products() {
       {/* Filters */}
       <Card>
         <CardContent className="pt-4">
-          <div className="flex gap-4 flex-wrap">
-            <div className="flex-1 min-w-[200px]">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by name or SKU..."
+                  placeholder="Search products..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
@@ -176,7 +176,7 @@ export default function Products() {
               </div>
             </div>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-full sm:w-40">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
@@ -190,56 +190,95 @@ export default function Products() {
         </CardContent>
       </Card>
 
-      {/* Products Table */}
+      {/* Products - Mobile Cards / Desktop Table */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{filteredProducts.length} Products</CardTitle>
+        <CardHeader className="py-3 sm:py-4">
+          <CardTitle className="text-sm sm:text-base">{filteredProducts.length} Products</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          {/* Mobile View - Cards */}
+          <div className="space-y-3 sm:hidden">
+            {filteredProducts.map(product => (
+              <div key={product.id} className="p-3 rounded-lg border bg-card">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm truncate">{product.name}</p>
+                    <p className="text-xs text-muted-foreground">{product.sku}</p>
+                  </div>
+                  <Badge 
+                    variant={product.stock <= product.lowStockThreshold ? 'destructive' : 'secondary'}
+                    className="text-xs shrink-0"
+                  >
+                    {product.stock} in stock
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <div className="flex gap-3">
+                    <span className="text-muted-foreground">Retail: <span className="text-foreground font-medium">{formatCurrency(product.sellingPrice)}</span></span>
+                    <span className="text-muted-foreground">Wholesale: <span className="text-foreground font-medium">{formatCurrency(product.wholesalePrice)}</span></span>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(product)}>
+                      <Edit className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      onClick={() => setDeleteId(product.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop View - Table */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b text-left">
-                  <th className="pb-3 font-medium text-muted-foreground">Product</th>
-                  <th className="pb-3 font-medium text-muted-foreground">SKU</th>
-                  <th className="pb-3 font-medium text-muted-foreground">Category</th>
-                  <th className="pb-3 font-medium text-muted-foreground text-right">Purchase</th>
-                  <th className="pb-3 font-medium text-muted-foreground text-right">Retail</th>
-                  <th className="pb-3 font-medium text-muted-foreground text-right">Wholesale</th>
-                  <th className="pb-3 font-medium text-muted-foreground text-right">Stock</th>
-                  <th className="pb-3 font-medium text-muted-foreground text-right">Actions</th>
+                  <th className="pb-3 font-medium text-muted-foreground text-sm">Product</th>
+                  <th className="pb-3 font-medium text-muted-foreground text-sm">SKU</th>
+                  <th className="pb-3 font-medium text-muted-foreground text-sm">Category</th>
+                  <th className="pb-3 font-medium text-muted-foreground text-sm text-right">Retail</th>
+                  <th className="pb-3 font-medium text-muted-foreground text-sm text-right">Wholesale</th>
+                  <th className="pb-3 font-medium text-muted-foreground text-sm text-right">Stock</th>
+                  <th className="pb-3 font-medium text-muted-foreground text-sm text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredProducts.map(product => (
-                  <tr key={product.id} className="invoice-row">
+                  <tr key={product.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
                     <td className="py-3">
-                      <p className="font-medium">{product.name}</p>
+                      <p className="font-medium text-sm">{product.name}</p>
                       <p className="text-xs text-muted-foreground">{product.unit} • {product.gstPercent}% GST</p>
                     </td>
                     <td className="py-3 text-sm">{product.sku}</td>
                     <td className="py-3">
-                      <Badge variant="secondary">{product.category}</Badge>
+                      <Badge variant="secondary" className="text-xs">{product.category}</Badge>
                     </td>
-                    <td className="py-3 text-right price-display">{formatCurrency(product.purchasePrice)}</td>
-                    <td className="py-3 text-right price-display">{formatCurrency(product.sellingPrice)}</td>
-                    <td className="py-3 text-right price-display">{formatCurrency(product.wholesalePrice)}</td>
+                    <td className="py-3 text-right text-sm">{formatCurrency(product.sellingPrice)}</td>
+                    <td className="py-3 text-right text-sm">{formatCurrency(product.wholesalePrice)}</td>
                     <td className="py-3 text-right">
                       <Badge 
                         variant={product.stock <= product.lowStockThreshold ? 'destructive' : 'secondary'}
+                        className="text-xs"
                       >
                         {product.stock}
                       </Badge>
                     </td>
                     <td className="py-3 text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(product)}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(product)}>
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="text-destructive hover:text-destructive"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
                           onClick={() => setDeleteId(product.id)}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -250,10 +289,10 @@ export default function Products() {
                 ))}
               </tbody>
             </table>
-            {filteredProducts.length === 0 && (
-              <p className="text-center py-8 text-muted-foreground">No products found</p>
-            )}
           </div>
+          {filteredProducts.length === 0 && (
+            <p className="text-center py-6 text-muted-foreground text-sm">No products found</p>
+          )}
         </CardContent>
       </Card>
 
