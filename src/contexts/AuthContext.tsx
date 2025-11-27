@@ -1,62 +1,62 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { User, UserRole } from '@/types';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { User } from '@/types';
+import { authService } from '@/services/authService';
 
 interface AuthContextType {
   user: User | null;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAdmin: boolean;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock users for MVP
-const MOCK_USERS: Record<string, { password: string; user: User }> = {
-  admin: {
-    password: 'admin123',
-    user: {
-      id: '1',
-      username: 'admin',
-      role: 'admin',
-      name: 'Store Owner',
-    },
-  },
-  staff: {
-    password: 'staff123',
-    user: {
-      id: '2',
-      username: 'staff',
-      role: 'staff',
-      name: 'Billing Staff',
-    },
-  },
-};
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('smartbill_user');
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = useCallback(async (username: string, password: string) => {
-    const mockUser = MOCK_USERS[username.toLowerCase()];
-    if (mockUser && mockUser.password === password) {
-      setUser(mockUser.user);
-      localStorage.setItem('smartbill_user', JSON.stringify(mockUser.user));
-      return true;
-    }
-    return false;
+  // Initialize auth state
+  useEffect(() => {
+    authService.getCurrentUser().then(user => {
+      setUser(user);
+      setLoading(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = authService.onAuthStateChange((user) => {
+      setUser(user);
+      setLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const logout = useCallback(() => {
+  const login = useCallback(async (username: string, password: string) => {
+    try {
+      const { data, error } = await authService.signIn(username, password);
+      if (error || !data.user) return false;
+      
+      const user = await authService.getCurrentUser();
+      setUser(user);
+      return true;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
+    await authService.signOut();
     setUser(null);
-    localStorage.removeItem('smartbill_user');
   }, []);
 
   const isAdmin = user?.role === 'admin';
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAdmin }}>
+    <AuthContext.Provider value={{ user, login, logout, isAdmin, loading }}>
       {children}
     </AuthContext.Provider>
   );

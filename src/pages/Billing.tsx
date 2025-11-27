@@ -130,7 +130,7 @@ export default function Billing() {
     }).format(amount);
   };
 
-  const handleSaveBill = () => {
+  const handleSaveBill = async () => {
     if (cart.length === 0) {
       toast({
         title: 'Cart is empty',
@@ -140,7 +140,7 @@ export default function Billing() {
       return;
     }
 
-    const invoice = addInvoice({
+    const invoice = await addInvoice({
       items: cart,
       subtotal: totals.subtotal,
       totalGst: totals.totalGst,
@@ -150,7 +150,7 @@ export default function Billing() {
       customerPhone,
       type: billType,
       createdBy: user?.id || '',
-    });
+    }, cart);
 
     setLastInvoice(invoice);
     setShowInvoice(true);
