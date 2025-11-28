@@ -98,14 +98,19 @@ export const authService = {
       return { data: null, error: authError };
     }
 
-    // Update user role to admin
-    const { error: roleError } = await supabase
-      .from('user_roles')
-      .update({ role: 'admin' })
-      .eq('user_id', authData.user.id);
+    // Claim admin privileges using the secure function
+    const { data: claimResult, error: claimError } = await supabase
+      .rpc('claim_admin_privileges', { _user_id: authData.user.id });
 
-    if (roleError) {
-      return { data: null, error: roleError };
+    if (claimError) {
+      return { data: null, error: claimError };
+    }
+
+    if (!claimResult) {
+      return { 
+        data: null, 
+        error: { message: 'Admin already exists. Please contact the administrator.' } as any
+      };
     }
 
     return { data: authData, error: null };
