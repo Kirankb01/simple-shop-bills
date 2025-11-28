@@ -15,9 +15,24 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [checkingSetup, setCheckingSetup] = useState(true);
   const { user, login, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Check if setup is needed on mount
+  useEffect(() => {
+    const checkSetup = async () => {
+      const adminExists = await authService.checkAdminExists();
+      if (!adminExists) {
+        navigate('/setup');
+      } else {
+        setCheckingSetup(false);
+      }
+    };
+    
+    checkSetup();
+  }, [navigate]);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -75,6 +90,14 @@ export default function Login() {
     
     setIsLoading(false);
   };
+
+  if (checkingSetup) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
