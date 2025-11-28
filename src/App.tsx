@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DataProvider } from "@/contexts/DataContext";
 import { AppLayout } from "@/components/layout/AppLayout";
+import Setup from "./pages/Setup";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Billing from "./pages/Billing";
@@ -26,6 +27,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
+              <Route path="/setup" element={<Setup />} />
               <Route path="/login" element={<Login />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route element={<AppLayout />}>

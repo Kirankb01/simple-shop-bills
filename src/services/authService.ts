@@ -65,6 +65,52 @@ export const authService = {
     return (roles?.[0]?.role as 'admin' | 'staff') || 'staff';
   },
 
+  async checkAdminExists(): Promise<boolean> {
+    const { data, error } = await supabase
+      .from('user_roles')
+      .select('id')
+      .eq('role', 'admin')
+      .limit(1);
+    
+    if (error) {
+      console.error('Error checking admin:', error);
+      return false;
+    }
+    
+    return data && data.length > 0;
+  },
+
+  async createAdminUser(username: string, password: string, name: string) {
+    // First create the user account
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: `${username}@smartbill.local`,
+      password,
+      options: {
+        data: {
+          username,
+          name,
+        },
+        emailRedirectTo: `${window.location.origin}/`,
+      },
+    });
+    
+    if (authError || !authData.user) {
+      return { data: null, error: authError };
+    }
+
+    // Update user role to admin
+    const { error: roleError } = await supabase
+      .from('user_roles')
+      .update({ role: 'admin' })
+      .eq('user_id', authData.user.id);
+
+    if (roleError) {
+      return { data: null, error: roleError };
+    }
+
+    return { data: authData, error: null };
+  },
+
   onAuthStateChange(callback: (user: any) => void) {
     return supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
