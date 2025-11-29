@@ -66,18 +66,14 @@ export const authService = {
   },
 
   async checkAdminExists(): Promise<boolean> {
-    const { data, error } = await supabase
-      .from('user_roles')
-      .select('id')
-      .eq('role', 'admin')
-      .limit(1);
+    const { data, error } = await supabase.rpc('admin_exists');
     
     if (error) {
       console.error('Error checking admin:', error);
       return false;
     }
     
-    return data && data.length > 0;
+    return data === true;
   },
 
   async createAdminUser(username: string, password: string, name: string) {

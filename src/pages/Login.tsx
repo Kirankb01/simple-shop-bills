@@ -23,10 +23,15 @@ export default function Login() {
   // Check if setup is needed on mount
   useEffect(() => {
     const checkSetup = async () => {
-      const adminExists = await authService.checkAdminExists();
-      if (!adminExists) {
-        navigate('/setup');
-      } else {
+      try {
+        const adminExists = await authService.checkAdminExists();
+        if (!adminExists) {
+          navigate('/setup');
+        } else {
+          setCheckingSetup(false);
+        }
+      } catch (error) {
+        console.error('Setup check failed:', error);
         setCheckingSetup(false);
       }
     };

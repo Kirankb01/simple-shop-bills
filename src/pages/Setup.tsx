@@ -20,11 +20,16 @@ export default function Setup() {
   // Check if admin already exists
   useEffect(() => {
     const checkAdmin = async () => {
-      const adminExists = await authService.checkAdminExists();
-      if (adminExists) {
-        // Admin already exists, redirect to login
-        navigate('/login');
-      } else {
+      try {
+        const adminExists = await authService.checkAdminExists();
+        if (adminExists) {
+          // Admin already exists, redirect to login
+          navigate('/login');
+        } else {
+          setCheckingAdmin(false);
+        }
+      } catch (error) {
+        console.error('Admin check failed:', error);
         setCheckingAdmin(false);
       }
     };
