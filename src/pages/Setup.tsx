@@ -46,9 +46,9 @@ export default function Setup() {
 
     setIsLoading(true);
 
-    const { error } = await authService.createAdminUser(username, password, name);
+    const { data, error } = await authService.createAdminUser(username, password, name);
     
-    if (!error) {
+    if (!error && data) {
       toast({
         title: 'Admin account created!',
         description: 'You can now login with your admin credentials.',
@@ -57,7 +57,7 @@ export default function Setup() {
     } else {
       toast({
         title: 'Setup failed',
-        description: error.message || 'Failed to create admin account.',
+        description: error?.message || 'Failed to create admin account.',
         variant: 'destructive',
       });
     }
