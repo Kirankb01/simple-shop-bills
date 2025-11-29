@@ -34,10 +34,11 @@ export default function Login() {
     checkSetup();
   }, [navigate]);
 
-  // Redirect if already logged in
+  // Redirect if already logged in - role-based
   useEffect(() => {
     if (user && !authLoading) {
-      navigate('/dashboard');
+      const isAdmin = user.role === 'admin';
+      navigate(isAdmin ? '/admin' : '/staff/dashboard');
     }
   }, [user, authLoading, navigate]);
 
@@ -48,11 +49,14 @@ export default function Login() {
     const success = await login(username, password);
     
     if (success) {
+      const currentUser = await authService.getCurrentUser();
+      const isAdmin = currentUser?.role === 'admin';
+      
       toast({
         title: 'Welcome back!',
         description: 'You have successfully logged in.',
       });
-      navigate('/dashboard');
+      navigate(isAdmin ? '/admin' : '/staff/dashboard');
     } else {
       toast({
         title: 'Login failed',
@@ -78,7 +82,9 @@ export default function Login() {
       // Auto-login after signup
       const success = await login(username, password);
       if (success) {
-        navigate('/dashboard');
+        const currentUser = await authService.getCurrentUser();
+        const isAdmin = currentUser?.role === 'admin';
+        navigate(isAdmin ? '/admin' : '/staff/dashboard');
       }
     } else {
       toast({
