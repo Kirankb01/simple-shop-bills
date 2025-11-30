@@ -162,6 +162,8 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_active: boolean
+          locked: boolean
           name: string
           updated_at: string
           username: string
@@ -169,6 +171,8 @@ export type Database = {
         Insert: {
           created_at?: string
           id: string
+          is_active?: boolean
+          locked?: boolean
           name: string
           updated_at?: string
           username: string
@@ -176,6 +180,8 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_active?: boolean
+          locked?: boolean
           name?: string
           updated_at?: string
           username?: string
@@ -260,6 +266,7 @@ export type Database = {
     Functions: {
       admin_exists: { Args: never; Returns: boolean }
       claim_admin_privileges: { Args: { _user_id: string }; Returns: boolean }
+      ensure_super_admin: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

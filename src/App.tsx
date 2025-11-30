@@ -7,7 +7,6 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { DataProvider } from "@/contexts/DataContext";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { StaffLayout } from "@/components/layout/StaffLayout";
-import Setup from "./pages/Setup";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Billing from "./pages/Billing";
@@ -30,7 +29,6 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              <Route path="/setup" element={<Setup />} />
               <Route path="/login" element={<Login />} />
               <Route path="/" element={<Navigate to="/login" replace />} />
               

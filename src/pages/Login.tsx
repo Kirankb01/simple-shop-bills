@@ -5,45 +5,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Receipt, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { authService } from '@/services/authService';
 
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [checkingSetup, setCheckingSetup] = useState(true);
   const { user, login, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-
-  // Check if setup is needed on mount
-  useEffect(() => {
-    const checkSetup = async () => {
-      try {
-        const adminExists = await authService.checkAdminExists();
-        if (!adminExists) {
-          navigate('/setup');
-        } else {
-          setCheckingSetup(false);
-        }
-      } catch (error) {
-        console.error('Setup check failed:', error);
-        setCheckingSetup(false);
-      }
-    };
-    
-    checkSetup();
-  }, [navigate]);
 
   // Redirect if already logged in - role-based
   useEffect(() => {
     if (user && !authLoading) {
       const isAdmin = user.role === 'admin';
-      navigate(isAdmin ? '/admin' : '/staff/dashboard');
+      navigate(isAdmin ? '/admin' : '/staff/dashboard', { replace: true });
     }
   }, [user, authLoading, navigate]);
 
@@ -51,17 +28,21 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
 
-    const success = await login(username, password);
+    const result = await login(username, password);
     
-    if (success) {
-      const currentUser = await authService.getCurrentUser();
-      const isAdmin = currentUser?.role === 'admin';
-      
+    if (result === true) {
+      // Login successful - redirect handled by useEffect
       toast({
         title: 'Welcome back!',
         description: 'You have successfully logged in.',
       });
-      navigate(isAdmin ? '/admin' : '/staff/dashboard');
+    } else if (typeof result === 'string') {
+      // Error message from auth service
+      toast({
+        title: 'Login failed',
+        description: result,
+        variant: 'destructive',
+      });
     } else {
       toast({
         title: 'Login failed',
@@ -73,36 +54,7 @@ export default function Login() {
     setIsLoading(false);
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    const { error } = await authService.signUp(username, password, name);
-    
-    if (!error) {
-      toast({
-        title: 'Account created!',
-        description: 'You can now login with your credentials.',
-      });
-      // Auto-login after signup
-      const success = await login(username, password);
-      if (success) {
-        const currentUser = await authService.getCurrentUser();
-        const isAdmin = currentUser?.role === 'admin';
-        navigate(isAdmin ? '/admin' : '/staff/dashboard');
-      }
-    } else {
-      toast({
-        title: 'Signup failed',
-        description: error.message,
-        variant: 'destructive',
-      });
-    }
-    
-    setIsLoading(false);
-  };
-
-  if (checkingSetup) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -122,130 +74,63 @@ export default function Login() {
           <p className="mt-2 text-muted-foreground">Fast & Simple Billing System</p>
         </div>
 
-        {/* Login/Signup Card */}
+        {/* Login Card */}
         <Card className="border-0 shadow-lg">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-2xl text-center">Welcome to SmartBill</CardTitle>
+            <CardTitle className="text-2xl text-center">Sign In</CardTitle>
             <CardDescription className="text-center">
-              Sign in to your account or create a new one
+              Enter your credentials to access SmartBill
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="login">
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="login-username">Username</Label>
-                    <Input
-                      id="login-username"
-                      type="text"
-                      placeholder="Enter username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="h-11"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="login-password">Password</Label>
-                    <Input
-                      id="login-password"
-                      type="password"
-                      placeholder="Enter password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="h-11"
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="w-full h-11" disabled={isLoading}>
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Signing in...
-                      </>
-                    ) : (
-                      'Sign In'
-                    )}
-                  </Button>
-                </form>
-              </TabsContent>
-              
-              <TabsContent value="signup">
-                <form onSubmit={handleSignup} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-name">Full Name</Label>
-                    <Input
-                      id="signup-name"
-                      type="text"
-                      placeholder="Enter your full name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="h-11"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-username">Username</Label>
-                    <Input
-                      id="signup-username"
-                      type="text"
-                      placeholder="Choose a username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="h-11"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      placeholder="Create a password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="h-11"
-                      required
-                      minLength={6}
-                    />
-                  </div>
-                  <Button type="submit" className="w-full h-11" disabled={isLoading}>
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating account...
-                      </>
-                    ) : (
-                      'Create Account'
-                    )}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="Enter username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="h-11"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-11"
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full h-11" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  'Sign In'
+                )}
+              </Button>
+            </form>
           </CardContent>
         </Card>
 
-        {/* Demo Credentials */}
+        {/* Default Credentials Info */}
         <Card className="border-dashed bg-muted/50">
           <CardContent className="pt-4">
             <p className="text-sm font-medium text-muted-foreground mb-3 text-center">
-              Demo Credentials
+              Default Admin Credentials
             </p>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="rounded-lg bg-card p-3 text-center">
-                <p className="font-medium text-foreground">Admin</p>
-                <p className="text-muted-foreground">admin / admin123</p>
-              </div>
-              <div className="rounded-lg bg-card p-3 text-center">
-                <p className="font-medium text-foreground">Staff</p>
-                <p className="text-muted-foreground">staff / staff123</p>
-              </div>
+            <div className="rounded-lg bg-card p-3 text-center">
+              <p className="font-medium text-foreground">Super Admin</p>
+              <p className="text-muted-foreground">admin / admin123</p>
             </div>
           </CardContent>
         </Card>

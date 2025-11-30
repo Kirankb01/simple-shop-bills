@@ -5,6 +5,8 @@ export interface User {
   username: string;
   role: UserRole;
   name: string;
+  isActive: boolean;
+  locked: boolean;
 }
 
 export interface Product {
