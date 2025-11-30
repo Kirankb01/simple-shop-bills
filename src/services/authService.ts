@@ -1,20 +1,16 @@
 import { supabase } from '@/integrations/supabase/client';
 
 export const authService = {
-  async signUp(username: string, password: string, name: string) {
-    const { data, error } = await supabase.auth.signUp({
-      email: `${username}@smartbill.local`,
-      password,
-      options: {
-        data: {
-          username,
-          name,
-        },
-        emailRedirectTo: `${window.location.origin}/`,
-      },
-    });
-    
-    return { data, error };
+  // Ensure super-admin exists (called on app startup)
+  async ensureSuperAdmin() {
+    try {
+      const { error } = await supabase.rpc('ensure_super_admin');
+      if (error) {
+        console.error('Error ensuring super-admin:', error);
+      }
+    } catch (error) {
+      console.error('Failed to ensure super-admin:', error);
+    }
   },
 
   async signIn(username: string, password: string) {
@@ -23,7 +19,24 @@ export const authService = {
       password,
     });
     
-    return { data, error };
+    if (error) return { data: null, error };
+
+    // Check if user is active
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_active')
+      .eq('id', data.user.id)
+      .single();
+
+    if (!profile?.is_active) {
+      await supabase.auth.signOut();
+      return { 
+        data: null, 
+        error: { message: 'Account is disabled. Contact administrator.' } as any 
+      };
+    }
+    
+    return { data, error: null };
   },
 
   async signOut() {
@@ -53,6 +66,8 @@ export const authService = {
       username: profile?.username || '',
       name: profile?.name || '',
       role: role as 'admin' | 'staff',
+      isActive: profile?.is_active ?? true,
+      locked: profile?.locked ?? false,
     };
   },
 
@@ -65,20 +80,9 @@ export const authService = {
     return (roles?.[0]?.role as 'admin' | 'staff') || 'staff';
   },
 
-  async checkAdminExists(): Promise<boolean> {
-    const { data, error } = await supabase.rpc('admin_exists');
-    
-    if (error) {
-      console.error('Error checking admin:', error);
-      return false;
-    }
-    
-    return data === true;
-  },
-
-  async createAdminUser(username: string, password: string, name: string) {
-    // First create the user account
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+  // Admin functions for managing staff
+  async createStaffUser(username: string, password: string, name: string) {
+    const { data, error } = await supabase.auth.signUp({
       email: `${username}@smartbill.local`,
       password,
       options: {
@@ -90,26 +94,63 @@ export const authService = {
       },
     });
     
-    if (authError || !authData.user) {
-      return { data: null, error: authError };
+    return { data, error };
+  },
+
+  async toggleUserActive(userId: string, isActive: boolean) {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ is_active: isActive })
+      .eq('id', userId);
+    
+    return { error };
+  },
+
+  async resetUserPassword(userId: string, newPassword: string) {
+    // This requires admin privileges
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: { message: 'Not authenticated' } as any };
+
+    const role = await this.getUserRole(user.id);
+    if (role !== 'admin') {
+      return { error: { message: 'Unauthorized' } as any };
     }
 
-    // Claim admin privileges using the secure function
-    const { data: claimResult, error: claimError } = await supabase
-      .rpc('claim_admin_privileges', { _user_id: authData.user.id });
+    // Get user email
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', userId)
+      .single();
 
-    if (claimError) {
-      return { data: null, error: claimError };
+    if (!profile) {
+      return { error: { message: 'User not found' } as any };
     }
 
-    if (!claimResult) {
-      return { 
-        data: null, 
-        error: { message: 'Admin already exists. Please contact the administrator.' } as any
-      };
+    // Note: Password reset requires admin API access
+    // For now, we'll return a message that this needs backend implementation
+    return { 
+      error: { 
+        message: 'Password reset requires backend implementation. Use Supabase dashboard for now.' 
+      } as any 
+    };
+  },
+
+  async deleteStaffUser(userId: string) {
+    // Check if user is locked (super-admin)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('locked')
+      .eq('id', userId)
+      .single();
+
+    if (profile?.locked) {
+      return { error: { message: 'Cannot delete super-admin' } as any };
     }
 
-    return { data: authData, error: null };
+    // Delete user (cascade will handle profiles and roles)
+    const { error } = await supabase.auth.admin.deleteUser(userId);
+    return { error };
   },
 
   onAuthStateChange(callback: (user: any) => void) {

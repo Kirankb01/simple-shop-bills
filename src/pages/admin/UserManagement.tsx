@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, UserPlus, Loader2, Shield, User } from 'lucide-react';
+import { authService } from '@/services/authService';
+import { Users, UserPlus, Loader2, Shield, User, Trash2, Lock } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -15,12 +17,25 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface UserProfile {
   id: string;
   username: string;
   name: string;
   role: 'admin' | 'staff';
+  isActive: boolean;
+  locked: boolean;
 }
 
 export default function UserManagement() {
@@ -39,7 +54,8 @@ export default function UserManagement() {
     try {
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('*');
+        .select('*')
+        .order('created_at', { ascending: true });
 
       if (profilesError) throw profilesError;
 
@@ -50,13 +66,15 @@ export default function UserManagement() {
             .from('user_roles')
             .select('role')
             .eq('user_id', profile.id)
-            .single();
+            .maybeSingle();
 
           return {
             id: profile.id,
             username: profile.username,
             name: profile.name,
             role: (roleData?.role || 'staff') as 'admin' | 'staff',
+            isActive: profile.is_active ?? true,
+            locked: profile.locked ?? false,
           };
         })
       );
@@ -79,16 +97,11 @@ export default function UserManagement() {
     setCreating(true);
 
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: `${newUser.username}@smartbill.local`,
-        password: newUser.password,
-        options: {
-          data: {
-            username: newUser.username,
-            name: newUser.name,
-          },
-        },
-      });
+      const { error } = await authService.createStaffUser(
+        newUser.username,
+        newUser.password,
+        newUser.name
+      );
 
       if (error) throw error;
 
@@ -99,7 +112,7 @@ export default function UserManagement() {
 
       setIsDialogOpen(false);
       setNewUser({ name: '', username: '', password: '' });
-      loadUsers();
+      await loadUsers();
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -108,6 +121,46 @@ export default function UserManagement() {
       });
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleToggleActive = async (userId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await authService.toggleUserActive(userId, !currentStatus);
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: `User ${!currentStatus ? 'enabled' : 'disabled'} successfully`,
+      });
+
+      await loadUsers();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update user status',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      const { error } = await authService.deleteStaffUser(userId);
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'User deleted successfully',
+      });
+
+      await loadUsers();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete user',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -213,13 +266,67 @@ export default function UserManagement() {
                     )}
                   </div>
                   <div>
-                    <p className="font-medium">{user.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{user.name}</p>
+                      {user.locked && (
+                        <Lock className="h-3 w-3 text-muted-foreground" />
+                      )}
+                    </div>
                     <p className="text-sm text-muted-foreground">@{user.username}</p>
                   </div>
                 </div>
-                <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                  {user.role}
-                </Badge>
+                
+                <div className="flex items-center gap-4">
+                  <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                    {user.role}
+                  </Badge>
+                  
+                  {user.role === 'staff' && (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor={`active-${user.id}`} className="text-sm">
+                          {user.isActive ? 'Active' : 'Disabled'}
+                        </Label>
+                        <Switch
+                          id={`active-${user.id}`}
+                          checked={user.isActive}
+                          onCheckedChange={() => handleToggleActive(user.id, user.isActive)}
+                        />
+                      </div>
+                      
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete User</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete {user.name}? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteUser(user.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </>
+                  )}
+                  
+                  {user.locked && (
+                    <Badge variant="outline" className="text-xs">
+                      Protected
+                    </Badge>
+                  )}
+                </div>
               </div>
             ))}
           </div>

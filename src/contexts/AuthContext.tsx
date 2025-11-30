@@ -4,7 +4,7 @@ import { authService } from '@/services/authService';
 
 interface AuthContextType {
   user: User | null;
-  login: (username: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<boolean | string>;
   logout: () => void;
   isAdmin: boolean;
   loading: boolean;
@@ -18,15 +18,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize auth state
   useEffect(() => {
-    authService.getCurrentUser().then(user => {
-      setUser(user);
-      setLoading(false);
-    });
+    const initAuth = async () => {
+      try {
+        // Ensure super-admin exists
+        await authService.ensureSuperAdmin();
+        
+        // Get current user
+        const user = await authService.getCurrentUser();
+        setUser(user);
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
 
     // Listen for auth changes
     const { data: { subscription } } = authService.onAuthStateChange((user) => {
       setUser(user);
-      setLoading(false);
     });
 
     return () => {
@@ -34,10 +45,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const login = useCallback(async (username: string, password: string) => {
+  const login = useCallback(async (username: string, password: string): Promise<boolean | string> => {
     try {
       const { data, error } = await authService.signIn(username, password);
-      if (error || !data.user) return false;
+      if (error) return error.message;
+      if (!data) return false;
       
       const user = await authService.getCurrentUser();
       setUser(user);
