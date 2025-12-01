@@ -7,9 +7,12 @@ export const authService = {
       const { error } = await supabase.rpc('ensure_super_admin');
       if (error) {
         console.error('Error ensuring super-admin:', error);
+        return { error };
       }
+      return { error: null };
     } catch (error) {
       console.error('Failed to ensure super-admin:', error);
+      return { error };
     }
   },
 
