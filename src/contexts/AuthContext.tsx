@@ -18,18 +18,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize auth state
   useEffect(() => {
+    let mounted = true;
+
     const initAuth = async () => {
       try {
-        // Ensure super-admin exists
-        await authService.ensureSuperAdmin();
+        // Ensure super-admin exists (fire and forget, don't block on this)
+        authService.ensureSuperAdmin().catch(err => {
+          console.warn('Super-admin check failed:', err);
+        });
         
         // Get current user
         const user = await authService.getCurrentUser();
-        setUser(user);
+        if (mounted) {
+          setUser(user);
+        }
       } catch (error) {
         console.error('Auth initialization error:', error);
+        if (mounted) {
+          setUser(null);
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
@@ -37,10 +48,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Listen for auth changes
     const { data: { subscription } } = authService.onAuthStateChange((user) => {
-      setUser(user);
+      if (mounted) {
+        setUser(user);
+      }
     });
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
