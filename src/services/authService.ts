@@ -157,10 +157,13 @@ export const authService = {
   },
 
   onAuthStateChange(callback: (user: any) => void) {
-    return supabase.auth.onAuthStateChange(async (event, session) => {
+    return supabase.auth.onAuthStateChange((event, session) => {
+      // Defer Supabase calls with setTimeout to prevent deadlock
       if (session?.user) {
-        const user = await authService.getCurrentUser();
-        callback(user);
+        setTimeout(async () => {
+          const user = await authService.getCurrentUser();
+          callback(user);
+        }, 0);
       } else {
         callback(null);
       }

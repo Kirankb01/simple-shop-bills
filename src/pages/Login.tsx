@@ -126,11 +126,11 @@ export default function Login() {
         <Card className="border-dashed bg-muted/50">
           <CardContent className="pt-4">
             <p className="text-sm font-medium text-muted-foreground mb-3 text-center">
-              Default Admin Credentials
+              Admin Credentials
             </p>
             <div className="rounded-lg bg-card p-3 text-center">
               <p className="font-medium text-foreground">Super Admin</p>
-              <p className="text-muted-foreground">admin / admin123</p>
+              <p className="text-muted-foreground">kirankb / Kiran@135715</p>
             </div>
           </CardContent>
         </Card>
