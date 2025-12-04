@@ -2,9 +2,10 @@ import { Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminSidebar } from './AdminSidebar';
 import { useState } from 'react';
-import { Menu, Bell, Search, Moon, Sun } from 'lucide-react';
+import { Menu, Search, Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NotificationDropdown } from '@/components/NotificationDropdown';
 
 export function AdminLayout() {
   const { user, isAdmin, loading } = useAuth();
@@ -80,10 +81,7 @@ export function AdminLayout() {
             </Button>
 
             {/* Notifications */}
-            <Button variant="ghost" size="icon" className="h-9 w-9 relative">
-              <Bell className="h-4 w-4" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
-            </Button>
+            <NotificationDropdown />
 
             {/* User Avatar */}
             <div className="flex items-center gap-3 pl-2 border-l border-border/50 ml-2">
