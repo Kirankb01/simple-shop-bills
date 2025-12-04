@@ -15,12 +15,15 @@ import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
   const { products, getTodaySales, getMonthSales, getLowStockProducts, getTopSellingProducts } = useData();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   const todaySales = getTodaySales();
   const monthSales = getMonthSales();
   const lowStockProducts = getLowStockProducts();
   const topProducts = getTopSellingProducts(5);
+
+  // Dynamic base path based on user role
+  const basePath = isAdmin ? '/admin' : '/staff';
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -30,17 +33,24 @@ export default function Dashboard() {
     }).format(amount);
   };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">
-            Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'}, {user?.name}
+            {getGreeting()}, {user?.name?.split(' ')[0]}
           </h1>
           <p className="text-sm text-muted-foreground">Here's what's happening today.</p>
         </div>
-        <Link to="/billing">
+        <Link to={`${basePath}/billing`}>
           <Button size="default" className="gap-2 w-full sm:w-auto">
             <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
             New Bill
@@ -111,16 +121,16 @@ export default function Dashboard() {
       <Card className="lg:hidden">
         <CardContent className="pt-4">
           <div className="grid grid-cols-2 gap-2">
-            <Link to="/billing">
+            <Link to={`${basePath}/billing`}>
               <Button variant="default" className="w-full h-auto py-3 flex-col gap-1.5 text-xs">
                 <ShoppingCart className="h-4 w-4" />
                 <span>Create Bill</span>
               </Button>
             </Link>
-            <Link to="/purchase">
+            <Link to={`${basePath}/sales`}>
               <Button variant="outline" className="w-full h-auto py-3 flex-col gap-1.5 text-xs">
-                <ArrowRight className="h-4 w-4" />
-                <span>Add Purchase</span>
+                <TrendingUp className="h-4 w-4" />
+                <span>Sales History</span>
               </Button>
             </Link>
           </div>
@@ -129,34 +139,40 @@ export default function Dashboard() {
 
       {/* Two Column Layout */}
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-        {/* Top Selling Products */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between py-3 sm:py-4">
-            <CardTitle className="text-base sm:text-lg">Top Selling</CardTitle>
-            <Link to="/products" className="text-xs sm:text-sm text-primary hover:underline">
-              View all
-            </Link>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="space-y-3 sm:space-y-4">
-              {topProducts.map((item, index) => (
-                <div key={item.product.id} className="flex items-center gap-3 sm:gap-4">
-                  <div className="flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-muted text-xs sm:text-sm font-medium shrink-0">
-                    {index + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm sm:text-base truncate">{item.product.name}</p>
-                    <p className="text-xs text-muted-foreground">{item.product.sku}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="font-medium text-sm sm:text-base">{formatCurrency(item.product.sellingPrice)}</p>
-                    <p className="text-xs text-muted-foreground">{item.soldCount} sold</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Sales Overview - Clickable */}
+        <Link to={`${basePath}/sales`} className="group">
+          <Card className="h-full cursor-pointer transition-all duration-200 hover:shadow-lg hover:border-primary/30 hover:-translate-y-0.5">
+            <CardHeader className="flex flex-row items-center justify-between py-3 sm:py-4">
+              <CardTitle className="text-base sm:text-lg group-hover:text-primary transition-colors">Top Selling</CardTitle>
+              <span className="text-xs sm:text-sm text-primary font-medium">
+                View all →
+              </span>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="space-y-3 sm:space-y-4">
+                {topProducts.length === 0 ? (
+                  <p className="text-center py-8 text-muted-foreground text-sm">No sales data yet</p>
+                ) : (
+                  topProducts.map((item, index) => (
+                    <div key={item.product.id} className="flex items-center gap-3 sm:gap-4">
+                      <div className="flex h-6 w-6 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-muted text-xs sm:text-sm font-medium shrink-0">
+                        {index + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm sm:text-base truncate">{item.product.name}</p>
+                        <p className="text-xs text-muted-foreground">{item.product.sku}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-medium text-sm sm:text-base">{formatCurrency(item.product.sellingPrice)}</p>
+                        <p className="text-xs text-muted-foreground">{item.soldCount} sold</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
 
         {/* Low Stock Alerts */}
         <Card className={lowStockProducts.length > 0 ? 'border-warning/30' : ''}>
@@ -165,9 +181,11 @@ export default function Dashboard() {
               <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-warning" />
               Low Stock
             </CardTitle>
-            <Link to="/low-stock" className="text-xs sm:text-sm text-primary hover:underline">
-              View all
-            </Link>
+            {isAdmin && (
+              <Link to="/admin/low-stock" className="text-xs sm:text-sm text-primary hover:underline">
+                View all
+              </Link>
+            )}
           </CardHeader>
           <CardContent className="pt-0">
             {lowStockProducts.length === 0 ? (
@@ -195,38 +213,33 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
-
       {/* Quick Actions - Desktop */}
       <Card className="hidden lg:block">
         <CardHeader className="py-3">
           <CardTitle className="text-lg">Quick Actions</CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Link to="/billing">
-              <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
-                <ShoppingCart className="h-5 w-5" />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Link to={`${basePath}/billing`}>
+              <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2 hover:border-primary/50 hover:bg-primary/5">
+                <ShoppingCart className="h-5 w-5 text-primary" />
                 <span>Create Bill</span>
               </Button>
             </Link>
-            <Link to="/products">
-              <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
-                <Package className="h-5 w-5" />
-                <span>Manage Products</span>
-              </Button>
-            </Link>
-            <Link to="/purchase">
-              <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
-                <ArrowRight className="h-5 w-5" />
-                <span>Add Purchase</span>
-              </Button>
-            </Link>
-            <Link to="/sales">
-              <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
-                <TrendingUp className="h-5 w-5" />
+            <Link to={`${basePath}/sales`}>
+              <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2 hover:border-primary/50 hover:bg-primary/5">
+                <TrendingUp className="h-5 w-5 text-primary" />
                 <span>View Sales</span>
               </Button>
             </Link>
+            {isAdmin && (
+              <Link to="/admin/products">
+                <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2 hover:border-primary/50 hover:bg-primary/5">
+                  <Package className="h-5 w-5 text-primary" />
+                  <span>Manage Products</span>
+                </Button>
+              </Link>
+            )}
           </div>
         </CardContent>
       </Card>
