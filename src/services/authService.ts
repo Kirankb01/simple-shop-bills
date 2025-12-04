@@ -140,20 +140,34 @@ export const authService = {
   },
 
   async deleteStaffUser(userId: string) {
-    // Check if user is locked (super-admin)
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('locked')
-      .eq('id', userId)
-      .single();
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        return { error: { message: 'Not authenticated' } as any };
+      }
 
-    if (profile?.locked) {
-      return { error: { message: 'Cannot delete super-admin' } as any };
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ userId }),
+        }
+      );
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        return { error: { message: result.error || 'Failed to delete user' } as any };
+      }
+
+      return { error: null };
+    } catch (error: any) {
+      return { error: { message: error.message || 'Failed to delete user' } as any };
     }
-
-    // Delete user (cascade will handle profiles and roles)
-    const { error } = await supabase.auth.admin.deleteUser(userId);
-    return { error };
   },
 
   onAuthStateChange(callback: (user: any) => void) {
