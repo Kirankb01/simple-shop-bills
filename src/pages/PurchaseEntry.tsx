@@ -1,25 +1,21 @@
 import { useState } from 'react';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { Product } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { ProductAutocomplete } from '@/components/ProductAutocomplete';
 import { 
   PackagePlus,
   Calendar,
   FileText,
+  X,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Navigate } from 'react-router-dom';
 
 export default function PurchaseEntry() {
@@ -27,6 +23,7 @@ export default function PurchaseEntry() {
   const { isAdmin } = useAuth();
   const { toast } = useToast();
 
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
     productId: '',
     supplierName: '',
@@ -35,6 +32,24 @@ export default function PurchaseEntry() {
     invoiceNo: '',
     notes: '',
   });
+
+  const handleProductSelect = (product: Product) => {
+    setSelectedProduct(product);
+    setFormData({
+      ...formData,
+      productId: product.id,
+      costPrice: product.purchasePrice,
+    });
+  };
+
+  const clearSelectedProduct = () => {
+    setSelectedProduct(null);
+    setFormData({
+      ...formData,
+      productId: '',
+      costPrice: 0,
+    });
+  };
 
   // Redirect if not admin
   if (!isAdmin) {
@@ -79,6 +94,7 @@ export default function PurchaseEntry() {
       description: `Added ${formData.quantity} units of ${product?.name} to inventory.`,
     });
 
+    setSelectedProduct(null);
     setFormData({
       productId: '',
       supplierName: '',
@@ -110,31 +126,29 @@ export default function PurchaseEntry() {
             <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
               <div>
                 <Label className="text-sm">Product *</Label>
-                <Select 
-                  value={formData.productId} 
-                  onValueChange={(v) => {
-                    const product = products.find(p => p.id === v);
-                    setFormData({ 
-                      ...formData, 
-                      productId: v,
-                      costPrice: product?.purchasePrice || 0,
-                    });
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a product" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {products.map(product => (
-                      <SelectItem key={product.id} value={product.id}>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="truncate">{product.name}</span>
-                          <Badge variant="secondary" className="ml-2 text-xs">{product.stock}</Badge>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {selectedProduct ? (
+                  <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/50">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">{selectedProduct.name}</p>
+                      <p className="text-xs text-muted-foreground">{selectedProduct.sku} • Stock: {selectedProduct.stock}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      onClick={clearSelectedProduct}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <ProductAutocomplete
+                    products={products}
+                    onSelect={handleProductSelect}
+                    placeholder="Search products..."
+                  />
+                )}
               </div>
 
               <div>

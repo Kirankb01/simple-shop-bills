@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { CartItem, Product } from '@/types';
@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { ProductAutocomplete } from '@/components/ProductAutocomplete';
 import { 
-  Search, 
   Plus, 
   Minus, 
   Trash2, 
@@ -17,7 +17,6 @@ import {
   Receipt,
   User,
   Package,
-  X
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -40,24 +39,15 @@ export default function Billing() {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [billType, setBillType] = useState<'retail' | 'wholesale'>('retail');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [showInvoice, setShowInvoice] = useState(false);
   const [lastInvoice, setLastInvoice] = useState<any>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const filteredProducts = useMemo(() => {
-    if (!searchQuery) return products.slice(0, 12);
-    const query = searchQuery.toLowerCase();
-    return products.filter(p => 
-      p.name.toLowerCase().includes(query) ||
-      p.sku.toLowerCase().includes(query) ||
-      p.category.toLowerCase().includes(query)
-    );
-  }, [products, searchQuery]);
+  // Get recent products for quick add (when no search)
+  const recentProducts = useMemo(() => products.slice(0, 12), [products]);
 
   const addToCart = (product: Product) => {
     const existingIndex = cart.findIndex(item => item.product.id === product.id);
@@ -68,8 +58,6 @@ export default function Billing() {
     } else {
       setCart([...cart, { product, quantity: 1, priceType: billType, discount: 0 }]);
     }
-    setSearchQuery('');
-    searchInputRef.current?.focus();
   };
 
   const updateQuantity = (index: number, delta: number) => {
@@ -198,46 +186,34 @@ export default function Billing() {
       <div className="grid gap-6 lg:grid-cols-5">
         {/* Product Search & Selection - Left Side */}
         <div className="lg:col-span-3 space-y-4">
-          {/* Search Bar */}
+          {/* Autocomplete Search Bar */}
           <Card className="border-0 shadow-soft">
             <CardContent className="p-4">
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  ref={searchInputRef}
-                  placeholder="Search products by name, SKU, or category..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-12 search-input-lg"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                )}
-              </div>
+              <ProductAutocomplete
+                products={products}
+                onSelect={addToCart}
+                billType={billType}
+                autoFocus
+              />
             </CardContent>
           </Card>
 
-          {/* Product Grid */}
+          {/* Quick Add Product Grid */}
           <Card className="border-0 shadow-soft">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
                   <Package className="h-4 w-4 text-primary" />
-                  {searchQuery ? `Results for "${searchQuery}"` : 'Products'}
+                  Quick Add
                 </CardTitle>
                 <Badge variant="secondary" className="font-medium">
-                  {filteredProducts.length} items
+                  {recentProducts.length} items
                 </Badge>
               </div>
             </CardHeader>
             <CardContent>
               <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
-                {filteredProducts.map((product) => (
+                {recentProducts.map((product) => (
                   <button
                     key={product.id}
                     onClick={() => addToCart(product)}
@@ -266,7 +242,7 @@ export default function Billing() {
                   </button>
                 ))}
               </div>
-              {filteredProducts.length === 0 && (
+              {recentProducts.length === 0 && (
                 <div className="text-center py-12">
                   <Package className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
                   <p className="text-muted-foreground">No products found</p>
