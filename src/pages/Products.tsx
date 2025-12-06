@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useData } from '@/contexts/DataContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Product } from '@/types';
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import { 
   Search, 
   Plus, 
@@ -64,16 +65,93 @@ export default function Products() {
   const { toast } = useToast();
   
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [showDialog, setShowDialog] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState<Omit<Product, 'id' | 'createdAt' | 'updatedAt'>>(emptyProduct);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<NodeJS.Timeout>();
 
-  // Redirect if not admin
-  if (!isAdmin) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  // Debounced search
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 200);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [searchQuery]);
+
+  // Autocomplete suggestions
+  const searchSuggestions = useMemo(() => {
+    if (!debouncedQuery || debouncedQuery.length < 1) return [];
+    const q = debouncedQuery.toLowerCase();
+    return products
+      .filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        p.sku.toLowerCase().includes(q)
+      )
+      .slice(0, 8);
+  }, [products, debouncedQuery]);
+
+  useEffect(() => {
+    setShowDropdown(searchSuggestions.length > 0 && searchQuery.length > 0);
+    setHighlightedIndex(0);
+  }, [searchSuggestions, searchQuery]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        searchInputRef.current &&
+        !searchInputRef.current.contains(e.target as Node) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Scroll highlighted into view
+  useEffect(() => {
+    if (dropdownRef.current && showDropdown) {
+      const highlighted = dropdownRef.current.children[highlightedIndex] as HTMLElement;
+      if (highlighted) highlighted.scrollIntoView({ block: 'nearest' });
+    }
+  }, [highlightedIndex, showDropdown]);
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (!showDropdown) return;
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setHighlightedIndex(prev => prev < searchSuggestions.length - 1 ? prev + 1 : prev);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setHighlightedIndex(prev => prev > 0 ? prev - 1 : 0);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (searchSuggestions[highlightedIndex]) {
+          handleEdit(searchSuggestions[highlightedIndex]);
+          setShowDropdown(false);
+        }
+        break;
+      case 'Escape':
+        setShowDropdown(false);
+        break;
+    }
+  };
 
   const filteredProducts = products.filter(p => {
     const matchesSearch = !searchQuery || 
@@ -143,6 +221,11 @@ export default function Products() {
     }
   };
 
+  // Redirect if not admin
+  if (!isAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
       {/* Header */}
@@ -160,20 +243,96 @@ export default function Products() {
         </Button>
       </div>
 
-      {/* Filters */}
+      {/* Filters with Autocomplete */}
       <Card>
         <CardContent className="pt-4">
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-            <div className="flex-1">
+            <div className="flex-1 relative">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
-                  placeholder="Search products..."
+                  ref={searchInputRef}
+                  placeholder="Search products by name or SKU..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
+                  onKeyDown={handleSearchKeyDown}
+                  onFocus={() => {
+                    if (searchSuggestions.length > 0 && searchQuery.length > 0) {
+                      setShowDropdown(true);
+                    }
+                  }}
+                  className="pl-9 pr-9"
+                  autoComplete="off"
                 />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setShowDropdown(false);
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
+
+              {/* Autocomplete Dropdown */}
+              {showDropdown && (
+                <div
+                  ref={dropdownRef}
+                  className="absolute z-50 w-full mt-2 bg-popover border border-border rounded-xl shadow-lg overflow-hidden animate-in fade-in-0 zoom-in-95"
+                >
+                  <div className="max-h-72 overflow-y-auto">
+                    {searchSuggestions.map((product, index) => (
+                      <button
+                        key={product.id}
+                        type="button"
+                        onClick={() => {
+                          handleEdit(product);
+                          setShowDropdown(false);
+                        }}
+                        onMouseEnter={() => setHighlightedIndex(index)}
+                        className={cn(
+                          "w-full px-4 py-3 text-left flex items-center gap-3 transition-colors",
+                          highlightedIndex === index
+                            ? "bg-accent text-accent-foreground"
+                            : "hover:bg-muted"
+                        )}
+                      >
+                        <div className="p-2 rounded-lg bg-primary/10 shrink-0">
+                          <Package className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm truncate">{product.name}</p>
+                          <p className="text-xs text-muted-foreground">{product.sku} • {product.category}</p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <span className="font-bold text-sm text-primary">
+                            {formatCurrency(product.sellingPrice)}
+                          </span>
+                          <Badge 
+                            variant={product.stock <= product.lowStockThreshold ? 'destructive' : 'secondary'} 
+                            className="text-[10px] h-5"
+                          >
+                            {product.stock} in stock
+                          </Badge>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="px-4 py-2 border-t border-border bg-muted/50 text-xs text-muted-foreground flex items-center gap-2">
+                    <kbd className="px-1.5 py-0.5 bg-background rounded text-[10px] border">↑</kbd>
+                    <kbd className="px-1.5 py-0.5 bg-background rounded text-[10px] border">↓</kbd>
+                    <span>navigate</span>
+                    <kbd className="px-1.5 py-0.5 bg-background rounded text-[10px] border ml-2">Enter</kbd>
+                    <span>edit</span>
+                    <kbd className="px-1.5 py-0.5 bg-background rounded text-[10px] border ml-2">Esc</kbd>
+                    <span>close</span>
+                  </div>
+                </div>
+              )}
             </div>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
               <SelectTrigger className="w-full sm:w-40">
